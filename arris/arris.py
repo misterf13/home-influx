@@ -59,7 +59,8 @@ def process_table(client, data, tag, float_it_up=True):
   list_dict = []
   data_time = get_time()
   for stat in data:
-    data_dict = {'fields':{}}
+    data_dict = {'fields':{},
+                 'tags'  :{}}
     for index, header in enumerate(headers):
       try:
         stat[index]
@@ -71,14 +72,14 @@ def process_table(client, data, tag, float_it_up=True):
         val = str_to_num(stat[index])
       else:
         val = stat[index]
-      # We'll tag the first index
-      if index == 0:
-        data_dict['tags'] = {header:val}
+      # We want Procedure, Channel, and Channel ID as tags instead of fields
+      if header in ['Procedure', 'Channel', 'Channel ID']:
+        data_dict['tags'].update({header:val})
       else:
         data_dict['fields'].update({header:val})
       data_dict['measurement'] = tag
       data_dict['time']        = data_time
-    print("Writing: {}".format(data_dict))
+    print('Writing: {}'.format(data_dict))
     client.write_points([data_dict])
 
 def main():
