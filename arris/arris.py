@@ -4,26 +4,37 @@ from influxdb import InfluxDBClient
 
 import re
 import urllib3
+import sys
 
-#num_re = re.compile('\d+(?:\.\d+)?')
 num_re = re.compile(r'[-+]?[0-9]+(\.[0-9]*)?')
+
+def get_arris_status():
+  http = urllib3.PoolManager()
+  r = http.request('GET', 'http://192.168.100.1/cmconnectionstatus.html')
+  if r.status == 200:
+    return r
+  else:
+    print('Error in request: {0}'.format(r.status))
+    sys.exit(1)
+
+def setup_influx(influx_host, influx_port):
+  client = InfluxDBClient(host=influx_host, port=influx_port)
+  client.create_database('arris')
+  client.switch_database('arris')
+
+  return client
 
 def get_time():
   current_time = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
 
   return current_time
 
-def add_tag(list_to_tag, tag):
-  for item in list_to_tag:
-    item['measurement'] = tag
-
 def str_to_num(num_string):
   match = num_re.match(num_string)
   if match:
     num = float(match.group())
   else:
-    # Return fake value so nothing breaks
-    print('No match found! Bad data going to influx.')
+    # Just return the string
     num = num_string
 
   return num
@@ -43,7 +54,7 @@ def process_html_table(html_table_data):
 
   return tabled_data
 
-def process_table(client, data, tag, convert_int):
+def process_table(client, data, tag, float_it_up=True):
   headers   = data.pop(0)
   list_dict = []
   data_time = get_time()
@@ -55,14 +66,12 @@ def process_table(client, data, tag, convert_int):
       except:
         print('No value for index: {0}'.format(index))
         continue
-      #if stat[index][0].isdigit() and convert_int:
-      #  val = str_to_num(stat[index])
-      #else:
-      #  val = stat[index]
-      if tag == 'startup':
-        val = stat[index]
-      else:
+      # Turn fields to floats if set
+      if float_it_up:
         val = str_to_num(stat[index])
+      else:
+        val = stat[index]
+      # We'll tag the first index
       if index == 0:
         data_dict['tags'] = {header:val}
       else:
@@ -72,30 +81,23 @@ def process_table(client, data, tag, convert_int):
     print("Writing: {}".format(data_dict))
     client.write_points([data_dict])
 
-http = urllib3.PoolManager()
-r = http.request('GET', 'http://192.168.100.1/cmconnectionstatus.html')
-if r.status == 200:
-  soup = bs(r.data, 'lxml')
+def main():
+  url_ret  = get_arris_status()
+  soup     = bs(url_ret.data, 'lxml')
+  tables   = soup.findAll('table', attrs={'class':'simpleTable'})
 
-tables = soup.findAll('table', attrs={'class':'simpleTable'})
+  influx_client = setup_influx('capsule2', 32774)
 
-client = InfluxDBClient(host='capsule2', port=32774)
-client.create_database('arris')
-client.switch_database('arris')
+  soup_dict = {}
+  for table_index, info in enumerate(['startup', 'downstream', 'upstream']):
+    soup_dict[info] = soup.select('table')[table_index]
 
-#Startup Procedure
-startup_table = soup.select('table')[0]
-#Downstream Bonded Channels
-downstream_table = soup.select('table')[1]
-#Upstream Bonded Channels
-upstream_table = soup.select('table')[2]
+  for header in soup_dict:
+    table_info = process_html_table(soup_dict[header])
+    if header == 'startup':
+      process_table(influx_client, table_info, header, float_it_up=False)
+    else:
+      process_table(influx_client, table_info, header)
 
-startup_out = process_html_table(startup_table)
-process_table(client, startup_out, 'startup', False)
-
-downstream_out = process_html_table(downstream_table)
-process_table(client, downstream_out, 'downstream', True)
-
-upstream_out = process_html_table(upstream_table)
-process_table(client, upstream_out, 'upstream', True)
-
+if __name__ == '__main__':
+  main()
