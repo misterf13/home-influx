@@ -8,9 +8,9 @@ import sys
 
 num_re = re.compile(r'[-+]?[0-9]+(\.[0-9]*)?')
 
-def get_arris_status():
+def get_arris_status(page):
   http = urllib3.PoolManager()
-  r = http.request('GET', 'http://192.168.100.1/cmconnectionstatus.html')
+  r    = http.request('GET', 'http://192.168.100.1/' + page)
   if r.status == 200:
     return r
   else:
@@ -83,10 +83,14 @@ def process_table(client, data, tag, float_it_up=True):
     client.write_points([data_dict])
 
 def main():
-  url_ret  = get_arris_status()
-  soup     = bs(url_ret.data, 'lxml')
-  tables   = soup.findAll('table', attrs={'class':'simpleTable'})
+  status_uri = 'cmconnectionstatus.html'
+  # We can get uptime from cmswinfo.html
+  info_uri   = 'cmswinfo.html'
+  url_ret    = get_arris_status(status_uri)
+  soup       = bs(url_ret.data, 'lxml')
+  tables     = soup.findAll('table', attrs={'class':'simpleTable'})
 
+  # Setup influx client
   influx_client = setup_influx('capsule2', 32774)
 
   soup_dict = {}
