@@ -42,15 +42,13 @@ def str_to_num(num_string):
 def process_html_table(html_table_data):
   header      = html_table_data.find('th')
   header_text = header.get_text()
-  rows        = html_table_data.find_all('tr')
+  # Here we skip the first <tr> which have the table headers
+  rows        = html_table_data.find_all('tr')[1:]
   tabled_data = []
   for row in rows:
     cols = row.find_all('td')
     cols = [item.text.strip() for item in cols]
     tabled_data.append([item for item in cols if item])
-
-  #FIXME Popping index 0, it is empty.
-  tabled_data.pop(0)
 
   return tabled_data
 
