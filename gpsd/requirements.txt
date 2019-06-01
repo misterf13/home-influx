@@ -1,1 +1,1 @@
-gpsdshm>=0.2
+shmgpsd>=0.2.3
