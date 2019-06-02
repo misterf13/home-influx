@@ -17,13 +17,11 @@ def get_fix(shm_gpsd):
   return shm_gpsd.fix.mode
 
 def get_satellites(shm_gpsd):
-  sat_list = []
+  sat_dict = {}
   for sat_i in range(0, shmgpsd.MAXCHANNELS):
     if shm_gpsd.skyview[sat_i].PRN != 0:
-      sat_list.append( {'sat':  shm_gpsd.skyview[sat_i].PRN,
-                                'snr':  shm_gpsd.skyview[sat_i].ss,
-                                'used': shm_gpsd.skyview[sat_i].used})
-  return sat_list
+      sat_dict.update({shm_gpsd.skyview[sat_i].PRN : { 'snr':  shm_gpsd.skyview[sat_i].ss }})
+  return sat_dict
 
 def main():
   gpsd_dict = {}
@@ -34,7 +32,7 @@ def main():
   gpsd_dict['fix']          = fix
   gpsd_dict['sats_visible'] = sats
   gpsd_dict['sats_used']    = sats_used
-  #gpsd_dict['satellites']   = get_satellites(shm_gpsd)
+  gpsd_dict['satellites']   = get_satellites(shm_gpsd)
 
   print(json.dumps(gpsd_dict, indent=2))
 
