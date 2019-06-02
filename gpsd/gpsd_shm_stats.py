@@ -32,7 +32,7 @@ def main():
   gpsd_dict['fix']          = fix
   gpsd_dict['sats_visible'] = sats
   gpsd_dict['sats_used']    = sats_used
-  gpsd_dict['satellites']   = get_satellites(shm_gpsd)
+  gpsd_dict['satellite']   = get_satellites(shm_gpsd)
 
   print(json.dumps(gpsd_dict, indent=2))
 
