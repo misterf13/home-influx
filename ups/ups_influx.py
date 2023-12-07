@@ -13,7 +13,8 @@ def setup_influx(influx_host, influx_port):
 def send_to_influx(influx_client, nuts):
   data_dict = {'fields':{}}
   for info in nuts:
-    key, _val = info.split(':')
+    print(info)
+    key, _val = info.split(':')[0:2]
     try:
       val = float(_val)
     except:

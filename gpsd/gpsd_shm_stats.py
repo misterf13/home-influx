@@ -16,6 +16,12 @@ def get_used_sats(shm_gpsd):
 def get_fix(shm_gpsd):
   return shm_gpsd.fix.mode
 
+def get_lat(shm_gpsd):
+  return shm_gpsd.fix.latitude
+
+def get_lon(shm_gpsd):
+  return shm_gpsd.fix.longitude
+
 def get_satellites(shm_gpsd):
   sat_dict = {}
   for sat_i in range(0, shmgpsd.MAXCHANNELS):
@@ -29,10 +35,14 @@ def main():
   sats      = get_visible_sats(shm_gpsd)
   sats_used = get_used_sats(shm_gpsd)
   fix       = get_fix(shm_gpsd)
+  lat       = get_lat(shm_gpsd)
+  lon       = get_lon(shm_gpsd)
+  gpsd_dict['lat']          = lat
+  gpsd_dict['lon']          = lon
   gpsd_dict['fix']          = fix
   gpsd_dict['sats_visible'] = sats
   gpsd_dict['sats_used']    = sats_used
-  gpsd_dict['satellite']   = get_satellites(shm_gpsd)
+  gpsd_dict['satellite']    = get_satellites(shm_gpsd)
 
   print(json.dumps(gpsd_dict, indent=2))
 
