@@ -1,50 +1,48 @@
 from datetime import datetime
-from influxdb import InfluxDBClient
+import json
 
 import subprocess
 
-def setup_influx(influx_host, influx_port):
-  client = InfluxDBClient(host=influx_host, port=influx_port)
-  client.create_database('nut')
-  client.switch_database('nut')
+def json_print(nuts):
+ # Split the input nuts into lines
+ lines = nuts.strip().split('\n')
 
-  return client
+ # Initialize an empty dictionary
+ nested_dict = {}
 
-def send_to_influx(influx_client, nuts):
-  data_dict = {'fields':{}}
-  for info in nuts:
-    print(info)
-    key, _val = info.split(':')[0:2]
-    try:
-      val = float(_val)
-    except:
-      val = _val
-    data_dict['fields'].update({key:val})
+ # Iterate through each line and populate the nested dictionary
+ for line in lines:
+     try:
+         keys, val_ = line.split(': ', 1)
+         try:
+           value = float(val_)
+         except:
+           value = val_
+         keys = keys.split('.')
 
-  data_dict['measurement'] = 'CyberPower'
-  data_dict['time'] = get_time()
+         current_dict = nested_dict
+         for key in keys[:-1]:
+             current_dict = current_dict.setdefault(key, {})
 
-  print("Writing: {}".format(data_dict))
-  influx_client.write_points([data_dict])
+         current_key = keys[-1]
+
+         if isinstance(current_dict, dict):
+             current_dict[current_key] = value
+     except ValueError:
+         # Skip lines that don't follow the expected format
+         pass
+
+ # Print the resulting nested dictionary
+ print(json.dumps(nested_dict, indent=2))
 
 def get_nut():
-  nut_output  = subprocess.check_output(['upsc', 'cyberpower1'])
-  # This removes the last newline
-  nut_decoded = nut_output.decode('utf-8').rstrip('\n')
-  # Use newline to split into values
-  nut_list = nut_decoded.split('\n')
-
-  return nut_list
-
-def get_time():
-  current_time = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
-
-  return current_time
+  nut_output = subprocess.run(['upsc', 'cyberpower1'], capture_output=True)
+  nut_text   = nut_output.stdout.decode('utf-8')
+  return nut_text
 
 def main():
-  influx_client = setup_influx('capsule2', 32774)
-  nut_list = get_nut()
-  send_to_influx(influx_client, nut_list)
+  nut_text = get_nut()
+  json_print(nut_text)
 
 if __name__ == '__main__':
   main()
